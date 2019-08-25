@@ -1,0 +1,5 @@
+> Create func to get latest status from a pair
+> Send email if status changed
+> Create new email account to send alert
+> User subscribe with email, pair, timeframe to get signal alert
+> Run cronjob every 15 minutes

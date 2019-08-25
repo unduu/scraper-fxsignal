@@ -13,8 +13,8 @@ from mysql.connector import errorcode
 from twilio.rest import Client
 
 # Twilio
-account_sid = "AC8d1daa1db11271fc80bd0a8ed2c05464"
-auth_token = "b2db36b23c9515630fe90cefc23b003e"
+account_sid = "xxxxxxxxxx"
+auth_token = "xxxxxxxxx"
 
 # Mysql
 userdb = "root"

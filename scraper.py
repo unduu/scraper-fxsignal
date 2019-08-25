@@ -27,7 +27,7 @@ pair = 'USDJPY'
 time = '4 hours'
 
 # User info
-phone = '+6285255753539'
+phone = '+6285777777777'
 
 # display = Display(visible=0, size=(800, 600))
 # display.start()
@@ -70,7 +70,7 @@ def get_technical_summary(symbol, time):
 def send_email(to):
 	print("Send email to : "+to)
 	gmail_user = 'andifaizal88@gmail.com'
-	gmail_password = 'Iambringdarkness30'
+	gmail_password = 'xxxxxxx'
 
 	sent_from = gmail_user
 	subject = 'Completed email'

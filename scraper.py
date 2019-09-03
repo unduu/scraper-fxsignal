@@ -1,4 +1,4 @@
-#from pyvirtualdisplay import Display
+from pyvirtualdisplay import Display
 from selenium import webdriver
 from selenium.webdriver.support import ui
 from time import sleep
@@ -6,34 +6,40 @@ from time import sleep
 import json
 import smtplib
 import datetime
+import configparser
 
 import mysql.connector
 from mysql.connector import errorcode
 
 from twilio.rest import Client
 
+env = "DEV"
+configParser = configparser.RawConfigParser()   
+configFilePath = 'config.txt'
+configParser.read(configFilePath)
+
 # Twilio
-account_sid = "AC8d1daa1db11271fc80bd0a8ed2c05464"
-auth_token = "b2db36b23c9515630fe90cefc23b003e"
+account_sid = configParser.get(env, "twilio_sid")
+auth_token = configParser.get(env, "twilio_token")
 
 # Mysql
-userdb = "root"
-passdb = "biteme10"
-hostdb = "127.0.0.1"
-database = "scraping"
+userdb = configParser.get(env, "database_user")
+passdb = configParser.get(env, "database_pass")
+hostdb = configParser.get(env, "database_host")
+database = configParser.get(env, "database_name")
 
 # Tradingview
-pair = 'USDJPY'
-time = '4 hours'
+pair = "USDJPY"
+time = "4 hours"
 
 # User info
-phone = '+6285255753539'
+phone = "+6285255753539"
 
 # display = Display(visible=0, size=(800, 600))
 # display.start()
 
 def get_technical_summary(symbol, time):
-	print("Scraping "+symbol+" timeframe "+time)
+	print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Scraping "+symbol+" timeframe "+time)
 	url = 'https://www.tradingview.com/symbols/'+str(symbol)+'/technicals/'
 	timeframe_list = ['1 minute','5 minutes', '15 minutes','1 hour','4 hours', '1 day', '1 week', '1 month'] 
 
@@ -42,10 +48,12 @@ def get_technical_summary(symbol, time):
 
 	timeframe = timeframe_list.index(time) + 1
 
-	# Production
-	# driver = webdriver.Chrome()
-	# Development 
-	driver = webdriver.Firefox()
+	if env == "PROD":
+		# Production
+		driver = webdriver.Chrome()
+	elif env == "DEV":
+		# Development 
+		driver = webdriver.Firefox()
 
 	driver.get(url)
     
@@ -61,16 +69,19 @@ def get_technical_summary(symbol, time):
 	summary_element = driver.find_element_by_xpath('//div[@class="speedometersContainer-1EFQq-4i-"]/div[2]/span[2]')
 	summary = summary_element.text
 
+	last_price_element = driver.find_element_by_xpath('//div[@class="tv-category-header__main-price-content"]/div/div/div')
+	last_price = last_price_element.text
+
 	driver.close()
 
-	print("Get summary result = "+summary)
+	print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Get summary result = "+summary+" with price = "+last_price)
 
-	return summary;
+	return {"action" : summary, "last_price" : last_price};
 
 def send_email(to):
 	print("Send email to : "+to)
-	gmail_user = 'andifaizal88@gmail.com'
-	gmail_password = 'Iambringdarkness30'
+	gmail_user = configParser.get(env, "email_user")
+	gmail_password = configParser.get(env, "email_pass")
 
 	sent_from = gmail_user
 	subject = 'Completed email'
@@ -89,9 +100,9 @@ def send_email(to):
 	    server.sendmail(sent_from, to, email_text)
 	    server.close()
 
-	    print('Email sent!')
+	    print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Email sent!")
 	except Exception as e:
-	    print('Something went wrong...'+str(e))
+	    print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Something went wrong..."+str(e))
 
 def send_via_whatsapp(receiver_number, message):
 	
@@ -99,7 +110,7 @@ def send_via_whatsapp(receiver_number, message):
 	client = Client(account_sid, auth_token)
 
 	# this is the Twilio sandbox testing number
-	from_whatsapp_number='whatsapp:+14155238886'
+	from_whatsapp_number='whatsapp:'+configParser.get(env, "phone_sender")
 	# replace this number with your own WhatsApp Messaging number
 	to_whatsapp_number='whatsapp:'+receiver_number
 
@@ -107,8 +118,17 @@ def send_via_whatsapp(receiver_number, message):
 	                       from_=from_whatsapp_number,
 	                       to=to_whatsapp_number)
 
+def send_via_sms(to_number, message):
+	
+	# client credentials are read from TWILIO_ACCOUNT_SID and AUTH_TOKEN
+	client = Client(account_sid, auth_token)
+
+	client.messages.create(messaging_service_sid='MG4fc48c0cbeb187ba7b12cf7731715e94', 
+							body=message,
+	                       	to=to_number)
+
 def insert_summary(data):
-	print("Insert new summary to db")
+	print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Insert new summary to db")
 	try:
 		# open the database connection
 		cnx = mysql.connector.connect(user=userdb, password=passdb, host=hostdb, database=database)
@@ -129,16 +149,16 @@ def insert_summary(data):
 
 	except mysql.connector.Error as err:
 		if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-		    print("Something is wrong with your user name or password")
+		    print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Something is wrong with your user name or password")
 		elif err.errno == errorcode.ER_BAD_DB_ERROR:
-		    print("Database does not exist")
+		    print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Database does not exist")
 		else:
 		    print(err)
 	else:
 		cnx.close()
 
 def get_latest_summary(pair):
-	print("Get previous summary from db")
+	print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Get previous summary from db")
 	data = {"pair" : pair}
 	try:
 		cnx = mysql.connector.connect(user=userdb, password=passdb, host=hostdb, database=database)
@@ -155,9 +175,9 @@ def get_latest_summary(pair):
 
 	except mysql.connector.Error as err:
 		if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-			print("Something is wrong with your user name or password")
+			print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Something is wrong with your user name or password")
 		elif err.errno == errorcode.ER_BAD_DB_ERROR:
-			print("Database does not exist")
+			print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Database does not exist")
 		else:
 			print(err)
 	finally:
@@ -165,20 +185,25 @@ def get_latest_summary(pair):
 
 
 # Scrape tradingview technical analyst page
-current_status = get_technical_summary(pair, time)
+summary = get_technical_summary(pair, time)
+current_status = summary['action']
 # print(pair+" : "+time+" = "+current_status)
 
 # Get latest data from a pair
 latest_summary = get_latest_summary("usdjpy")
-print("Check if signal changed")
+print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Check if signal changed")
 if latest_summary is not None:
 	if latest_summary['status'] != current_status:
-		print("Signal changed, notify user : ")
-		msg = latest_summary['status'] + ' ' + pair + ' ' + time
-		send_via_whatsapp(phone, msg)
+		print("["+datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")+"] "+"Signal changed, notify user : ")
+		msg = "The Professor - " + current_status + " " + pair + " " + time + ' ' + summary['last_price']
+		# send_via_whatsapp(phone, msg)
+		send_via_sms(phone, msg)
 
 # Insert to database	print(datetime.datetime.now()+" Insert data to db")
 
 created = datetime.datetime.now()
 summary = {"source": "tradingview.com", "status": current_status, "created" : created, "pair" : pair}
 insert_summary(summary)
+
+# New line
+print("\n")

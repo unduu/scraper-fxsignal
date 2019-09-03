@@ -59,6 +59,8 @@ def get_technical_summary(symbol, time):
     
 	timeframe_button = driver.find_element_by_xpath("//div[@class='tabsWrap-1nrUwwqy-']/div/div["+str(timeframe)+"]")
 
+	sleep(5)
+	
 	timeframe_button.click()
 	wait = ui.WebDriverWait(driver, 10)
 
